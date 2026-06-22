@@ -45,12 +45,16 @@ jobs:
       - name: Create new slipstreamed ISO
         run: |
           cd win_extracted
-          mkisofs -b boot/etfsboot.com -no-emul-boot -c BOOT.CAT -iso-level 4 -J -l -D -N -joliet-long -relaxed-filenames -V "WIN_SERVER_VIRTIO" -udf -boot-info-table -eltorito-alt-boot -e efi/microsoft/boot/efisys.bin -no-emul-boot -o ../WinServer_VirtIO.iso .
+          mkisofs -b boot/etfsboot.com -no-emul-boot -c BOOT.CAT -iso-level 4 -J -l -D -N -joliet-long -relaxed-filenames -allow-limited-size -V "WIN_SERVER_VIRTIO" -udf -boot-info-table -eltorito-alt-boot -e efi/microsoft/boot/efisys.bin -no-emul-boot -o ../WinServer_VirtIO.iso .
           cd ..
 
-      - name: Upload ISO as Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: WinServer_VirtIO
-          path: WinServer_VirtIO.iso
-          retention-days: 1
+      - name: Upload ISO to File Hoster
+        run: |
+          echo "=== STARTE UPLOAD ZU BASHUPLOAD ==="
+          echo "Bitte warten, der Upload dauert ca. 2-4 Minuten..."
+          curl -T ../WinServer_VirtIO.iso https://bashupload.com/WinServer_VirtIO.iso
+          
+          echo ""
+          echo "=== STARTE BACKUP-UPLOAD ZU TRANSFER.SH ==="
+          echo "Falls der erste Hoster fehlschlägt, hier der zweite Link:"
+          curl --upload-file ../WinServer_VirtIO.iso https://transfer.sh/WinServer_VirtIO.iso
