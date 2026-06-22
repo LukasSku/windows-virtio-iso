@@ -11,7 +11,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install required packages (wimtools, mkisofs, p7zip)
+      - name: Install required packages
         run: |
           sudo apt-get update
           sudo apt-get install -y wimtools genisoimage p7zip-full
@@ -28,14 +28,14 @@ jobs:
           7z x win.iso -owin_extracted
           7z x virtio.iso -ovirtio_extracted
           
-      - name: Mount and Inject VirtIO Drivers into boot.wim (Setup Environment)
+      - name: Mount and Inject VirtIO Drivers into boot.wim
         run: |
           mkdir mount
           sudo wimmountrw win_extracted/sources/boot.wim 2 mount
           sudo cp -r virtio_extracted/viostor/2k22/amd64/* mount/
           sudo wimunmount --commit mount
 
-      - name: Mount and Inject VirtIO Drivers into install.wim (The OS itself)
+      - name: Mount and Inject VirtIO Drivers into install.wim
         run: |
           sudo wimmountrw win_extracted/sources/install.wim 2 mount
           sudo cp -r virtio_extracted/viostor/2k22/amd64/* mount/
@@ -46,13 +46,27 @@ jobs:
         run: |
           mkisofs -b boot/etfsboot.com -no-emul-boot -c BOOT.CAT -iso-level 4 -J -l -D -N -joliet-long -relaxed-filenames -allow-limited-size -V "WIN_SERVER_VIRTIO" -udf -boot-info-table -eltorito-alt-boot -e efi/microsoft/boot/efisys.bin -no-emul-boot -o WinServer_VirtIO.iso win_extracted/
 
-      - name: Upload ISO to File Hoster
+      - name: Serve ISO via Cloudflare Tunnel (DIRECT DOWNLOAD)
         run: |
-          echo "=== STARTE UPLOAD ZU BASHUPLOAD ==="
-          echo "Bitte warten, der Upload dauert ca. 2-4 Minuten..."
-          curl -k -T WinServer_VirtIO.iso https://bashupload.com/WinServer_VirtIO.iso
+          echo "=== Starte lokalen Webserver auf GitHub ==="
+          python3 -m http.server 8000 &
           
+          echo "=== Installiere Cloudflare-Tunnel ==="
+          wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+          sudo dpkg -i cloudflared-linux-amd64.deb
+          
+          echo "=== Baue Tunnel auf... ==="
+          cloudflared tunnel --url http://localhost:8000 2> tunnel.log &
+          
+          sleep 10 # Warte kurz, bis der Tunnel steht
+          
+          echo "====================================================="
+          echo "===========> DEIN DIREKTER DOWNLOAD-LINK: <=========="
+          URL=$(grep -o 'https://[-a-zA-Z0-9]*\.trycloudflare\.com' tunnel.log | head -n 1)
+          echo "${URL}/WinServer_VirtIO.iso"
+          echo "====================================================="
           echo ""
-          echo "=== STARTE BACKUP-UPLOAD ZU TRANSFER.SH ==="
-          echo "Falls der erste Hoster fehlschlägt, hier der zweite Link:"
-          curl -k --upload-file WinServer_VirtIO.iso https://transfer.sh/WinServer_VirtIO.iso
+          echo "⚠️ WICHTIG: Der GitHub-Server pausiert jetzt hier für 60 Minuten!"
+          echo "Kopiere den Link genau JETZT und füge ihn bei Contabo als URL-Download ein."
+          echo "Sobald Contabo fertig ist, kannst du diesen Workflow oben rechts auf 'Cancel run' abbrechen."
+          sleep 3600
