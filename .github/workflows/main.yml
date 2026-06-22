@@ -1,4 +1,4 @@
-name: Build Windows Server 2025 VirtIO ISO
+name: Build Windows Server VirtIO ISO
 
 on:
   workflow_dispatch:
@@ -16,9 +16,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y wimtools genisoimage p7zip-full
 
-      - name: Download Windows Server 2025 Evaluation ISO
-        # Dies ist der offizielle Microsoft-Link für die 2025 Standard Evaluation
-        run: wget -O win.iso "https://software-static.download.prss.microsoft.com/dbazure/988969d5-f34g-4e03-90d5-5796a30fbf0c/26100.1742.240906-0331.ge_release_svc_refresh_SERVER_EVAL_x64FRE_en-us.iso"
+      - name: Download Windows Server Evaluation ISO
+        run: wget -O win.iso "https://go.microsoft.com/fwlink/?linkid=2345730&clcid=0x407&culture=de-de&country=de"
 
       - name: Download VirtIO Drivers (Stable)
         run: wget -O virtio.iso "https://fedorapeople.org/groups/virt/virtio-win/direct-downloads/stable-virtio/virtio-win.iso"
@@ -33,7 +32,6 @@ jobs:
         run: |
           mkdir mount
           sudo wimmountrw win_extracted/sources/boot.wim 2 mount
-          # Injiziere die Treiber (2k25 oder fallback auf 2k22)
           sudo cp -r virtio_extracted/viostor/2k22/amd64/* mount/
           sudo wimunmount --commit mount
 
@@ -47,12 +45,12 @@ jobs:
       - name: Create new slipstreamed ISO
         run: |
           cd win_extracted
-          mkisofs -b boot/etfsboot.com -no-emul-boot -c BOOT.CAT -iso-level 4 -J -l -D -N -joliet-long -relaxed-filenames -V "WIN_SERVER_2025_VIRTIO" -udf -boot-info-table -eltorito-alt-boot -e efi/microsoft/boot/efisys.bin -no-emul-boot -o ../WinServer2025_VirtIO.iso .
+          mkisofs -b boot/etfsboot.com -no-emul-boot -c BOOT.CAT -iso-level 4 -J -l -D -N -joliet-long -relaxed-filenames -V "WIN_SERVER_VIRTIO" -udf -boot-info-table -eltorito-alt-boot -e efi/microsoft/boot/efisys.bin -no-emul-boot -o ../WinServer_VirtIO.iso .
           cd ..
 
       - name: Upload ISO as Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: WinServer2025_VirtIO
-          path: WinServer2025_VirtIO.iso
+          name: WinServer_VirtIO
+          path: WinServer_VirtIO.iso
           retention-days: 1
